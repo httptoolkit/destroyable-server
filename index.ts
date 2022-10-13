@@ -1,6 +1,6 @@
 import * as net from 'net';
 
-export interface DestroyableServer {
+export type DestroyableServer<S extends net.Server> = S & {
     /**
      * Forcibly shut down the server - destroying all active connections, and then
      * calling `.close()``
@@ -19,7 +19,7 @@ export interface DestroyableServer {
  * `.destroy()` returns a promise, which you can wait on to ensure the server has
  * been fully destroyed.
  */
-export function makeDestroyable<S extends net.Server>(server: S): S & DestroyableServer  {
+export function makeDestroyable<S extends net.Server>(server: S): DestroyableServer<S>  {
     const connections: { [key: string]: net.Socket } = {};
 
     server.on('connection', function(conn: net.Socket) {
