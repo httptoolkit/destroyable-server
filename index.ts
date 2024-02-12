@@ -1,6 +1,6 @@
 import * as net from 'net';
 
-export type DestroyableServer<S extends net.Server> = S & {
+export type DestroyableServer<S extends net.Server = net.Server> = S & {
     /**
      * Forcibly shut down the server - destroying all active connections, and then
      * calling `.close()``
