@@ -1,6 +1,6 @@
 # Destroyable-Server [![Build Status](https://github.com/httptoolkit/destroyable-server/workflows/CI/badge.svg)](https://github.com/httptoolkit/destroyable-server/actions) [![Available on NPM](https://img.shields.io/npm/v/destroyable-server.svg)](https://npmjs.com/package/destroyable-server)
 
-> _Part of [HTTP Toolkit](https://httptoolkit.tech): powerful tools for building, testing & debugging HTTP(S)_
+> _Part of [HTTP Toolkit](https://httptoolkit.com/): powerful tools for building, testing & debugging HTTP(S)_
 
 A tiny Node.js module to make any server force-closeable.
 
