@@ -20,23 +20,23 @@ export type DestroyableServer<S extends net.Server = net.Server> = S & {
  * been fully destroyed.
  */
 export function makeDestroyable<S extends net.Server>(server: S): DestroyableServer<S>  {
-    const connections: { [key: string]: Array<net.Socket> } = {};
+    const connectionDict: { [key: string]: Array<net.Socket> } = {};
 
     const addConnection = (key: string, conn: net.Socket) => {
-        if (connections[key]) {
-            connections[key].push(conn);
+        if (connectionDict[key]) {
+            connectionDict[key].push(conn);
         } else {
-            connections[key] = [conn];
+            connectionDict[key] = [conn];
         }
     }
 
     const removeConnection = (key: string, conn: net.Socket) => {
-        const conns = connections[key];
+        const conns = connectionDict[key];
         if (!conns) return;
 
         const index = conns.indexOf(conn);
         if (conns.length === 1 && index === 0) {
-            delete connections[key];
+            delete connectionDict[key];
         } else if (index !== -1) {
             conns.splice(index, 1);
         }
@@ -66,9 +66,12 @@ export function makeDestroyable<S extends net.Server>(server: S): DestroyableSer
                     else resolve();
                 });
 
-                for (let key in connections) {
-                    for (let conn of connections[key]) {
-                        conn.destroy();
+                for (let key in connectionDict) {
+                    const connections = connectionDict[key];
+                    // Shut them down in reverse order (most recent first) to try to
+                    // reduce issues with layered connections (like tunnels)
+                    for (let i = connections.length - 1; i >= 0; i--) {
+                        connections[i].destroy();
                     }
                 }
             });
