@@ -20,21 +20,41 @@ export type DestroyableServer<S extends net.Server = net.Server> = S & {
  * been fully destroyed.
  */
 export function makeDestroyable<S extends net.Server>(server: S): DestroyableServer<S>  {
-    const connections: { [key: string]: net.Socket } = {};
+    const connections: { [key: string]: Array<net.Socket> } = {};
+
+    const addConnection = (key: string, conn: net.Socket) => {
+        if (connections[key]) {
+            connections[key].push(conn);
+        } else {
+            connections[key] = [conn];
+        }
+    }
+
+    const removeConnection = (key: string, conn: net.Socket) => {
+        const conns = connections[key];
+        if (!conns) return;
+
+        const index = conns.indexOf(conn);
+        if (conns.length === 1 && index === 0) {
+            delete connections[key];
+        } else if (index !== -1) {
+            conns.splice(index, 1);
+        }
+    };
 
     server.on('connection', function(conn: net.Socket) {
         const key = conn.remoteAddress + ':' + conn.remotePort;
-        connections[key] = conn;
+        addConnection(key, conn);
         conn.on('close', function() {
-            delete connections[key];
+            removeConnection(key, conn);
         });
     });
 
     server.on('secureConnection', function(conn: net.Socket) {
         const key = conn.remoteAddress + ':' + conn.remotePort;
-        connections[key] = conn;
+        addConnection(key, conn);
         conn.on('close', function() {
-            delete connections[key];
+            removeConnection(key, conn);
         });
     });
 
@@ -47,7 +67,9 @@ export function makeDestroyable<S extends net.Server>(server: S): DestroyableSer
                 });
 
                 for (let key in connections) {
-                    connections[key].destroy();
+                    for (let conn of connections[key]) {
+                        conn.destroy();
+                    }
                 }
             });
         }
