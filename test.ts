@@ -48,4 +48,18 @@ describe("Destroyable server", () => {
         expect(stream2.destroyed).to.equal(true);
     });
 
+    it("doesn't resolve until connections are fully closed", async () => {
+        const rawServer = new net.Server((_socket) => { /* Do nothing, keep socket open forever */ });
+        const server = makeDestroyable(rawServer);
+
+        await new Promise((resolve) => server.listen(resolve));
+
+        // Connect to the server, opening a socket that we never close
+        const socket = net.connect({ host: '127.0.0.1', port: (server.address() as any).port });
+        await delay(100); // Wait for connection to actually open
+
+        await server.destroy();
+        expect(socket.destroyed).to.equal(true);
+    });
+
 });

@@ -63,17 +63,32 @@ export function makeDestroyable<S extends net.Server>(server: S): DestroyableSer
             return new Promise<void>((resolve, reject) => {
                 server.close((err: any) => {
                     if (err) reject(err);
-                    else resolve();
                 });
+
+                const closePromises: Array<Promise<void>> = [];
 
                 for (let key in connectionDict) {
                     const connections = connectionDict[key];
                     // Shut them down in reverse order (most recent first) to try to
                     // reduce issues with layered connections (like tunnels)
                     for (let i = connections.length - 1; i >= 0; i--) {
-                        connections[i].destroy();
+                        const conn = connections[i];
+                        closePromises.push(new Promise((resolve) => {
+                            if (conn.closed || conn.destroyed) return resolve();
+                            conn.on('close', resolve);
+                        }));
+                        conn.destroy();
                     }
                 }
+
+                // Wait for all connections to actually close:
+                Promise.all(closePromises).then(() => {
+                    // We defer this fractionally, so that any localhost sockets have a
+                    // chance to process the other end of this socket closure. Without
+                    // this, you can see client conns still open after this promise
+                    // resolved, which can cause problems for connection reuse.
+                    setImmediate(() => resolve());
+                });
             });
         }
     });
