@@ -8,6 +8,8 @@ export type DestroyableServer<S extends net.Server = net.Server> = S & {
     destroy(): Promise<void>;
 }
 
+type Socket = net.Socket & { _parent?: Socket };
+
 /**
  * Makes a server 'destroyable': tracks all active server connections, and adds a
  * `.destroy()` method to the server, which destroys all active server connections
@@ -20,7 +22,7 @@ export type DestroyableServer<S extends net.Server = net.Server> = S & {
  * been fully destroyed.
  */
 export function makeDestroyable<S extends net.Server>(server: S): DestroyableServer<S>  {
-    const connectionDict: { [key: string]: Array<net.Socket> } = {};
+    const connectionDict: { [key: string]: Array<Socket> } = {};
 
     const addConnection = (key: string, conn: net.Socket) => {
         if (connectionDict[key]) {
@@ -41,6 +43,14 @@ export function makeDestroyable<S extends net.Server>(server: S): DestroyableSer
             conns.splice(index, 1);
         }
     };
+
+    const checkDestroyed = (conn: Socket) => {
+        do {
+            if (conn.destroyed) return true;
+            if (!conn._parent) return false;
+            conn = conn._parent;
+        } while (conn);
+    }
 
     server.on('connection', function(conn: net.Socket) {
         const key = conn.remoteAddress + ':' + conn.remotePort;
@@ -74,7 +84,12 @@ export function makeDestroyable<S extends net.Server>(server: S): DestroyableSer
                     for (let i = connections.length - 1; i >= 0; i--) {
                         const conn = connections[i];
                         closePromises.push(new Promise((resolve) => {
-                            if (conn.closed || conn.destroyed) return resolve();
+                            if (
+                                conn.closed || // Node v20+
+                                // For Node <v18, .closed doesn't exist. For Node v18/19, 'destroyed' isn't always set
+                                // on TLSSockets when the underlying socket is destroyed (so we check parents).
+                                checkDestroyed(conn)
+                            ) return resolve();
                             conn.on('close', resolve);
                         }));
                         conn.destroy();
