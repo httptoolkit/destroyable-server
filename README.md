@@ -6,7 +6,7 @@ A tiny Node.js module to make any server force-closeable.
 
 Without this module, when you call `server.close()` it stops listening for new connections, but it doesn't close existing connections, which can stop your process from exiting or cause problems with starting new servers.
 
-With this module, you can call `server.destroy()` to forcibly shut down all existing sockets in addition to closing the server, to immediately & completely end all connections.
+With this module, you can call `server.destroy()` to forcibly shut down all existing sockets in addition to closing the server, to immediately & completely (but cleanly) end all connections. Unlike `server.closeIdleConnections()` and similar, this is available on all net servers (not just HTTP) closes all connections with no possibility of race conditions as new connections appear, and provides a promise you can wait on to ensure all connection closure has fully completed before your code continues.
 
 This works for HTTP, TLS, bare sockets, whatever. Anything that extends `net.Server` or follows its patterns should work correctly.
 
